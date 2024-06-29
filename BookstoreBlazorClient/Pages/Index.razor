@@ -1,0 +1,63 @@
+﻿@page "/"
+@using Bookstore.Shared.DTOs
+@using GraphQL
+@inject GraphQLService GraphQLService
+
+<PageTitle>Bookstore</PageTitle>
+
+@if (loading)
+{
+    <div class="loader-overlay">
+        <div class="loader"></div>
+    </div>
+}
+
+<h1>Books</h1>
+
+<br />
+
+<ul>
+    @foreach (var book in books)
+    {
+        <li>@book.Title by @book.Author.Name | Genre: @book.Genre</li>
+    }
+</ul>
+
+@code {
+    private List<BookDTO> books = new List<BookDTO>();
+    private bool loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        await LoadBooks();
+    }
+
+    private async Task LoadBooks()
+    {
+        var query = new GraphQLRequest
+            {
+                Query = @"
+            {
+                books {
+                    id
+                    title
+                    genre
+                    author {
+                        name
+                    }
+                }
+            }"
+            };
+
+        var response = await GraphQLService.SendQueryAsync<DataResponse>(query);
+        books = response.Data.Books;
+
+        loading = false;
+    }
+
+    public class DataResponse
+    {
+        public List<BookDTO> Books { get; set; }
+    }
+}

@@ -1,0 +1,130 @@
+﻿@page "/add-book"
+
+@using Bookstore.Shared.DTOs
+@using GraphQL
+
+@inject GraphQLService GraphQLService
+@inject NavigationManager Navigation
+
+@if (loading)
+{
+    <div class="loader-overlay">
+        <div class="loader"></div>
+    </div>
+}
+
+<h3>Add New Book</h3>
+
+<EditForm Model="newBook" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="title">Title</label>
+        <InputText id="title" reqire="true" @bind-Value="newBook.Title" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="genre">Genre</label>
+        <InputText id="genre" reqire="true" @bind-Value="newBook.Genre" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label for="authorId">Author</label>
+        <InputSelect id="authorId" reqire="true" @bind-Value="newBook.AuthorId" class="form-control">
+            @if (authors is null || authors.Count == 0)
+            {
+                <option selected value="">None</option>
+            }
+            @foreach (var a in authors)
+            {
+                <option value="@a.Id">@a.Name</option>
+            }
+        </InputSelect>
+    </div>
+    <br />
+    <button type="submit" class="btn btn-primary">Add Book</button>
+
+    <br />
+    <br />
+    <div class="alert alert-danger @(string.IsNullOrEmpty(error) ? "d-none" : "d-show")" role="alert">
+        @error
+    </div>
+</EditForm>
+
+@code {
+    private List<AuthorDTO> authors = new List<AuthorDTO>();
+    private BookCrudDTO newBook = new BookCrudDTO();
+    private bool loading;
+    private string error = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthors();
+    }
+
+    private async Task LoadAuthors()
+    {
+        loading = true;
+        var query = new GraphQLRequest
+            {
+                Query = @"
+            {
+                authors {
+                    id
+                    name
+                }
+            }"
+            };
+
+        var response = await GraphQLService.SendQueryAsync<AuthorListResponse>(query);
+        authors = response.Data.Authors;
+
+        var fa = authors.FirstOrDefault();
+        if (fa is not null)
+            newBook.AuthorId = fa.Id;
+
+        loading = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        loading = true;
+        var mutation = new GraphQLRequest
+            {
+                Query = @"
+            mutation($book: BookCrudDTOInput!) {
+                addBook(bookDto: $book) {
+                    id
+                    title
+                    genre
+                    authorId
+                }
+            }",
+                Variables = new { book = newBook }
+            };
+
+        var response = await GraphQLService.SendMutationAsync<AddBookResponse>(mutation);
+
+        loading = false;
+
+        if(response.Errors is not null && response.Errors.Length > 0)
+        {
+            error = response.Errors[0].Message;
+        }
+
+        if (response.Data != null)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    public class AuthorListResponse
+    {
+        public List<AuthorDTO> Authors { get; set; }
+    }
+    public class AddBookResponse
+    {
+        public BookDTO AddBook { get; set; }
+    }
+}
