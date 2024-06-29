@@ -7,3 +7,5 @@ Update appsettings.Development.json DefaultConnection accordingly
 Run `update-database` to setup the data base 
 
 Make sure that the backend server is running on `5001` port or the port matches with `GraphQLHttpClient` URL in `GraphQLService` 
+
+Start `BookstoreAPI` and `BookstoreBlazorClient` applications
